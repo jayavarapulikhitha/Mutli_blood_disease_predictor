@@ -1,0 +1,11 @@
+models/
+# Virtual environment files
+venv/
+.venv/
+
+# Python compiled files
+__pycache__/
+*.pyc
+
+# IDE files
+.vscode/
