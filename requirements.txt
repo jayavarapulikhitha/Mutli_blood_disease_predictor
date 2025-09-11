@@ -6,3 +6,4 @@ pillow
 pytesseract
 deep_translator
 gtts
+xgboost
