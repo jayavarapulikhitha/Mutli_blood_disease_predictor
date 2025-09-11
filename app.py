@@ -137,10 +137,10 @@ def load_data_files():
         st.error("❌ Required data files are missing from the 'models' directory.")
         st.stop()
 
-try:
-    pytesseract.pytesseract.tesseract_cmd = r"D:\Tesseract-OCR\tesseract.exe"
-except Exception as e:
-    st.warning(f"Tesseract executable not found. OCR functionality may not work. Error: {e}")
+# try:
+#     pytesseract.pytesseract.tesseract_cmd = r"D:\Tesseract-OCR\tesseract.exe"
+# except Exception as e:
+#     st.warning(f"Tesseract executable not found. OCR functionality may not work. Error: {e}")
 
 model = load_model()
 le, feature_names = load_data_files()
