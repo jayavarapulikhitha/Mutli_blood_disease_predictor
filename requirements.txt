@@ -1,6 +1,8 @@
 streamlit
 numpy
 pandas
-matplotlib
-scikit-learn
-
+joblib
+pillow
+pytesseract
+deep_translator
+gtts
