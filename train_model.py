@@ -20,10 +20,11 @@ print("✅ Feature engineering and data cleaning complete.")
 
 
 # --- Step 2: Load Model and Supporting Files ---
+# --- Step 2: Load Model and Supporting Files ---
 print("✅ Loading model and required files...")
 try:
     le = joblib.load('models/label_encoder.pkl')
-    model = joblib.load('models/xgb_model.pkl')
+    model = joblib.load('models/xgb_model.pkl') # ADD THIS LINE
     feature_names = joblib.load('models/important_features.pkl')
 except FileNotFoundError:
     print("❌ Error: Model files not found in the 'models' directory. Please run the training script first.")
