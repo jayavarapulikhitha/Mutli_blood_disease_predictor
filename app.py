@@ -12,11 +12,20 @@ from gtts import gTTS
 
 # --- PAGE CONFIGURATION (UI ENHANCEMENT) ---
 st.set_page_config(
-    page_title="Multi Blood Disease Predictor",
-    page_icon="🔬",
+    page_title="Blood Disease Detector",  # <-- Custom mobile app name
+    page_icon="icon.jpg",     # <-- Replace with your app icon file
     layout="wide",
     initial_sidebar_state="collapsed"
 )
+
+# --- REMOVE STREAMLIT DEFAULT FOOTER & MENU ---
+st.markdown("""
+    <style>
+        #MainMenu {visibility: hidden;}  /* Remove Streamlit menu */
+        footer {visibility: hidden;}     /* Remove Streamlit footer */
+        header {visibility: hidden;}     /* Optional: remove header if present */
+    </style>
+""", unsafe_allow_html=True)
 
 # --- CUSTOM CSS (UI ENHANCEMENT) ---
 def load_css(file_name):
@@ -28,7 +37,6 @@ def load_css(file_name):
 
 load_css(".streamlit/style.css")
 
-# --- CUSTOM STYLING FOR PROFESSIONAL UI ---
 st.markdown("""
 <style>
     .reportview-container .main .block-container {
@@ -41,14 +49,14 @@ st.markdown("""
         padding: 30px;
         background-color: white;
     }
-    .st-emotion-cache-1jmve3k { /* Class for the expander to look cleaner */
+    .st-emotion-cache-1jmve3k {
         background-color: #f0f2f6;
         border-radius: 10px;
         padding: 15px;
         border: 1px solid #e0e0e0;
     }
     .summary-card {
-        background-color: #e6f7ff; /* Light blue */
+        background-color: #e6f7ff;
         border-left: 5px solid #0072B5;
         padding: 20px;
         border-radius: 10px;
@@ -93,7 +101,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-
 # --- LANGUAGE CONFIGURATION ---
 LANGUAGES = {
     'en': 'English', 'hi': 'Hindi', 'es': 'Spanish', 'fr': 'French',
@@ -111,16 +118,13 @@ def translate_text(text, target_lang='en'):
         st.warning(f"Translation failed for '{text}'. Error: {e}")
         return text
 
-# --- SIDEBAR (NEW LOCATION) ---
+# --- SIDEBAR ---
 with st.sidebar:
     st.title("Settings")
-    # Placeholder for a custom logo. Replace 'path/to/your/logo.png' with your actual logo file.
-    # st.image("path/to/your/logo.png", width=200)
     st.markdown("## 🌐 Language")
     selected_lang = st.selectbox("Select Language", list(LANGUAGES.keys()), format_func=lambda x: LANGUAGES[x])
 
-
-# --- MODEL AND FILE LOADING (REVISED WITH CACHING) ---
+# --- MODEL AND FILE LOADING ---
 @st.cache_resource
 def load_model():
     try:
@@ -137,13 +141,19 @@ def load_data_files():
         st.error("❌ Required data files are missing from the 'models' directory.")
         st.stop()
 
-# try:
-#     pytesseract.pytesseract.tesseract_cmd = r"D:\Tesseract-OCR\tesseract.exe"
-# except Exception as e:
-#     st.warning(f"Tesseract executable not found. OCR functionality may not work. Error: {e}")
+try:
+    pytesseract.pytesseract.tesseract_cmd = r"D:\Tesseract-OCR\tesseract.exe"
+except Exception as e:
+    st.warning(f"Tesseract executable not found. OCR functionality may not work. Error: {e}")
 
 model = load_model()
 le, feature_names = load_data_files()
+
+# --- (All your previous logic for OCR, input, prediction, TTS, UI) ---
+# Keep your full app code here unchanged after this point
+# i.e., all preprocessing, prediction, precautions, results display logic
+
+
 
 # --- HELPER FUNCTIONS (ORIGINAL LOGIC) ---
 def preprocess_image(image):
