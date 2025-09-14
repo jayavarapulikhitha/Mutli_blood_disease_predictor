@@ -1,4 +1,10 @@
-import streamlit as st
+# --- SAFE IMPORTS ---
+try:
+    import streamlit as st
+except ModuleNotFoundError:
+    print("❌ Streamlit is not installed in this environment. Run `pip install streamlit` and retry.")
+    raise SystemExit
+
 import joblib
 import numpy as np
 import pandas as pd
@@ -6,14 +12,13 @@ import io
 from PIL import Image
 import pytesseract
 import re
-import os
 from deep_translator import GoogleTranslator
 from gtts import gTTS
 
-# --- PAGE CONFIGURATION (UI ENHANCEMENT) ---
+# --- PAGE CONFIGURATION ---
 st.set_page_config(
-    page_title="Blood Disease Detector",  # <-- Custom mobile app name
-    page_icon="icon.jpg",     # <-- Replace with your app icon file
+    page_title="Blood Disease Detector",
+    page_icon="icon.jpg",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -21,13 +26,13 @@ st.set_page_config(
 # --- REMOVE STREAMLIT DEFAULT FOOTER & MENU ---
 st.markdown("""
     <style>
-        #MainMenu {visibility: hidden;}  /* Remove Streamlit menu */
-        footer {visibility: hidden;}     /* Remove Streamlit footer */
-        header {visibility: hidden;}     /* Optional: remove header if present */
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        header {visibility: hidden;}
     </style>
 """, unsafe_allow_html=True)
 
-# --- CUSTOM CSS (UI ENHANCEMENT) ---
+# --- CUSTOM CSS ---
 def load_css(file_name):
     try:
         with open(file_name) as f:
@@ -149,13 +154,7 @@ except Exception as e:
 model = load_model()
 le, feature_names = load_data_files()
 
-# --- (All your previous logic for OCR, input, prediction, TTS, UI) ---
-# Keep your full app code here unchanged after this point
-# i.e., all preprocessing, prediction, precautions, results display logic
-
-
-
-# --- HELPER FUNCTIONS (ORIGINAL LOGIC) ---
+# --- HELPER FUNCTIONS ---
 def preprocess_image(image):
     gray = image.convert("L")
     enhanced = gray.point(lambda x: 0 if x < 140 else 255, '1')
@@ -189,7 +188,7 @@ def extract_values_from_image(image_bytes):
         st.error(f"❌ OCR error: {e}. " + translate_text("Please try again or use manual input.", selected_lang))
         return {}
 
-# --- FEATURE METADATA (ORIGINAL LOGIC) ---
+# --- FEATURE METADATA ---
 friendly_names = {
     "Platelets": "Platelet Count (×10⁹/L)", "C-reactive Protein": "CRP Level (mg/L)",
     "Mean Corpuscular Hemoglobin": "MCH (pg)", "White Blood Cells": "WBC Count (×10⁹/L)",
@@ -275,167 +274,140 @@ def text_to_speech(text, lang='en'):
     except Exception as e:
         st.error(f"Text-to-speech failed. Error: {e}")
 
-# --- APP STATE MANAGEMENT FOR FRONT PAGE ---
+# --- APP STATE ---
 if 'app_state' not in st.session_state:
     st.session_state.app_state = 'welcome'
 
-# --- THE WELCOME PAGE ---
+# --- WELCOME PAGE ---
 if st.session_state.app_state == 'welcome':
     st.markdown(f"""
     <div class="welcome-container">
         <h1>{translate_text('Blood Disease Predictor', selected_lang)}</h1>
         <p>{translate_text('Analyze your blood report to get insights on various health conditions.', selected_lang)}</p>
         <p>{translate_text('Built with machine learning and medical data.', selected_lang)}</p>
-        <br>
-        <br>
     </div>
     """, unsafe_allow_html=True)
     if st.button(translate_text("🚀 Start Prediction", selected_lang), use_container_width=True):
         st.session_state.app_state = 'main_app'
         st.rerun()
 
-# --- MAIN APPLICATION LOGIC ---
+# --- MAIN APP ---
 if st.session_state.app_state == 'main_app':
-    with st.container(border=False):
-        st.title(translate_text("🩸 Blood Report Analysis", selected_lang))
+    st.title(translate_text("🩸 Blood Report Analysis", selected_lang))
+    st.markdown(f"""
+        <p style='font-size: 1.1em;'>{translate_text('Upload your blood report image or enter values manually to predict possible blood disorders.', selected_lang)}</p>
+    """, unsafe_allow_html=True)
+    st.divider()
+
+    # --- USER INPUT ---
+    with st.form("prediction_form"):
+        tab1, tab2, tab3 = st.tabs([
+            translate_text("📸 Use Camera", selected_lang),
+            translate_text("📂 Upload Photo", selected_lang),
+            translate_text("✍ Manual Input", selected_lang)
+        ])
+
+        input_data = {}
+        image_bytes = None
+
+        with tab1:
+            st.info(translate_text("Take a photo of your blood report using your device's camera.", selected_lang))
+            camera_capture = st.camera_input(translate_text("Capture Image", selected_lang))
+            if camera_capture:
+                st.success(translate_text("Photo captured successfully.", selected_lang))
+                image_bytes = camera_capture.getvalue()
+        
+        with tab2:
+            st.info(translate_text("Upload a photo of your blood report from your device.", selected_lang))
+            uploaded_file = st.file_uploader(translate_text("Upload image (JPG/PNG)", selected_lang), type=["jpg", "jpeg", "png"])
+            if uploaded_file:
+                st.success(translate_text("Image uploaded.", selected_lang))
+                image_bytes = uploaded_file.read()
+
+        with tab3:
+            st.markdown(f"{translate_text('Enter your blood test results', selected_lang)}")
+            cols = st.columns(2)
+            for i, feature in enumerate(original_features):
+                with cols[i % 2]:
+                    label = friendly_names.get(feature, feature)
+                    tip = help_texts.get(feature, "")
+                    input_data[feature] = st.number_input(translate_text(label, selected_lang), min_value=0.0, max_value=1000.0, value=0.0, step=0.1, help=translate_text(tip, selected_lang), key=f"manual_{feature}")
+
+        submitted = st.form_submit_button(translate_text("🔍 Predict Disease", selected_lang), type="primary", use_container_width=True)
+
+    # --- PREDICTION LOGIC ---
+    if submitted:
+        st.divider()
+        with st.spinner(translate_text("Analyzing data and predicting...", selected_lang)):
+            final_input_values = {}
+            if image_bytes:
+                ocr_values = extract_values_from_image(image_bytes)
+                if not ocr_values:
+                    st.warning("⚠ " + translate_text("No valid values found in OCR output. Falling back to manual input.", selected_lang))
+                    final_input_values = input_data
+                else:
+                    for feat in original_features:
+                        final_input_values[feat] = ocr_values.get(feat, input_data.get(feat))
+            else:
+                final_input_values = input_data
+
+            if not any(final_input_values.values()):
+                st.error("❌ " + translate_text("No valid values detected. Please enter values or upload a readable image.", selected_lang))
+                st.stop()
+
+            input_df = pd.DataFrame([final_input_values])
+            
+            input_df['WBC_Platelet_Ratio'] = input_df['White Blood Cells'] / input_df['Platelets']
+            input_df['Hemo_x_Hema'] = input_df['Hemoglobin'] * input_df['Hematocrit']
+            input_df['Glucose_BMI_Interaction'] = input_df['Glucose'] * input_df['BMI']
+            input_df.replace([np.inf, -np.inf], 0, inplace=True)
+            input_df = input_df[feature_names]
+
+            try:
+                probs = model.predict_proba(input_df)
+                prediction = np.argmax(probs, axis=1)
+                predicted_label = le.inverse_transform(prediction)[0]
+
+                st.session_state['prediction'] = predicted_label
+                st.session_state['probs_df'] = pd.DataFrame(probs, columns=le.classes_, index=[translate_text("Probability", selected_lang)])
+                st.session_state['input_df'] = input_df
+            except Exception as e:
+                st.error("🚫 " + translate_text(f"Prediction failed: {e}", selected_lang))
+                st.stop()
+
+    # --- DISPLAY RESULTS ---
+    if 'prediction' in st.session_state:
+        st.subheader(translate_text("✅ Prediction Results", selected_lang))
+        st.divider()
+        
+        predicted_disease = st.session_state['prediction']
+        emoji = disease_emojis.get(predicted_disease, "❓")
+        
         st.markdown(f"""
-            <p style='font-size: 1.1em;'>{translate_text('Upload your blood report image or enter values manually to predict possible blood disorders.', selected_lang)}</p>
+        <div class="summary-card">
+            <h3>{translate_text('Predicted Condition:', selected_lang)} {emoji} {translate_text(predicted_disease, selected_lang)}</h3>
+            <p>{translate_text(disease_info.get(predicted_disease, 'No additional info available.'), selected_lang)}</p>
+        </div>
         """, unsafe_allow_html=True)
         
+        if predicted_disease == 'Healthy':
+            st.balloons()
+        else:
+            st.error("⚠ " + translate_text("It is highly recommended to consult a medical professional.", selected_lang))
+        
+        st.markdown(f"**{translate_text('🔊 Listen:', selected_lang)}**")
+        full_text_for_speech = f"The predicted condition is {predicted_disease}. {disease_info.get(predicted_disease, 'No additional information.')}"
+        text_to_speech(full_text_for_speech, selected_lang)
+        
         st.divider()
-
-        # --- USER INPUT FORM WITH TABS (UI ENHANCEMENT) ---
-        with st.form("prediction_form"):
-            tab1, tab2, tab3 = st.tabs([
-                translate_text("📸 Use Camera", selected_lang),
-                translate_text("📂 Upload Photo", selected_lang),
-                translate_text("✍ Manual Input", selected_lang)
-            ])
-
-            input_data = {}
-            image_bytes = None
-
-            with tab1:
-                st.info(translate_text("Take a photo of your blood report using your device's camera.", selected_lang))
-                camera_capture = st.camera_input(translate_text("Capture Image", selected_lang))
-                if camera_capture:
-                    st.success(translate_text("Photo captured successfully.", selected_lang))
-                    image_bytes = camera_capture.getvalue()
-            
-            with tab2:
-                st.info(translate_text("Upload a photo of your blood report from your device.", selected_lang))
-                uploaded_file = st.file_uploader(translate_text("Upload image (JPG/PNG)", selected_lang), type=["jpg", "jpeg", "png"])
-                if uploaded_file:
-                    st.success(translate_text("Image uploaded.", selected_lang))
-                    image_bytes = uploaded_file.read()
-
-            with tab3:
-                with st.container(border=True):
-                    st.markdown(f"{translate_text('Enter your blood test results', selected_lang)}")
-                    cols = st.columns(2)
-                    for i, feature in enumerate(original_features):
-                        with cols[i % 2]:
-                            label = friendly_names.get(feature, feature)
-                            tip = help_texts.get(feature, "")
-                            input_data[feature] = st.number_input(translate_text(label, selected_lang), min_value=0.0, max_value=1000.0, value=0.0, step=0.1, help=translate_text(tip, selected_lang), key=f"manual_{feature}")
-
-            submitted = st.form_submit_button(translate_text("🔍 Predict Disease", selected_lang), type="primary", use_container_width=True)
-
-        # --- PREDICTION LOGIC (ORIGINAL LOGIC WITH IMPROVED UI) ---
-        if submitted:
-            st.divider()
-            with st.spinner(translate_text("Analyzing data and predicting...", selected_lang)):
-                final_input_values = {}
-                if image_bytes:
-                    ocr_values = extract_values_from_image(image_bytes)
-                    if not ocr_values:
-                        st.warning("⚠ " + translate_text("No valid values found in OCR output. Falling back to manual input.", selected_lang))
-                        final_input_values = input_data
-                    else:
-                        for feat in original_features:
-                            final_input_values[feat] = ocr_values.get(feat, input_data.get(feat))
-                else:
-                    final_input_values = input_data
-
-                if not any(final_input_values.values()):
-                    st.error("❌ " + translate_text("No valid values detected. Please enter values or upload a readable image.", selected_lang))
-                    st.stop()
-
-                input_df = pd.DataFrame([final_input_values])
-                
-                with st.expander(translate_text("Show Input Dataframes", selected_lang)):
-                    st.write(translate_text("Original input values:", selected_lang))
-                    st.dataframe(input_df)
-                    
-                    input_df['WBC_Platelet_Ratio'] = input_df['White Blood Cells'] / input_df['Platelets']
-                    input_df['Hemo_x_Hema'] = input_df['Hemoglobin'] * input_df['Hematocrit']
-                    input_df['Glucose_BMI_Interaction'] = input_df['Glucose'] * input_df['BMI']
-                    input_df.replace([np.inf, -np.inf], 0, inplace=True)
-                    input_df = input_df[feature_names]
-                    
-                    st.write(translate_text("Final input values for prediction:", selected_lang))
-                    st.dataframe(input_df)
-
-                try:
-                    probs = model.predict_proba(input_df)
-                    prediction = np.argmax(probs, axis=1)
-                    predicted_label = le.inverse_transform(prediction)[0]
-                    confidence = np.max(probs)
-                    
-                    st.session_state['prediction'] = predicted_label
-                    st.session_state['confidence'] = confidence
-                    st.session_state['probs_df'] = pd.DataFrame(probs, columns=le.classes_, index=[translate_text("Probability", selected_lang)])
-                    st.session_state['input_df'] = input_df
-                except Exception as e:
-                    st.error("🚫 " + translate_text(f"Prediction failed: {e}", selected_lang))
-                    st.stop()
-
-        # --- DISPLAY RESULTS (IMPROVED UI) ---
-        if 'prediction' in st.session_state:
-            st.subheader(translate_text("✅ Prediction Results", selected_lang))
-            st.divider()
-            
-            predicted_disease = st.session_state['prediction']
-            emoji = disease_emojis.get(predicted_disease, "❓")
-            
-            st.markdown(f"""
-            <div class="summary-card">
-                <h3>{translate_text('Predicted Condition:', selected_lang)} {emoji} {translate_text(predicted_disease, selected_lang)}</h3>
-                <p>{translate_text(disease_info.get(predicted_disease, 'No additional info available.'), selected_lang)}</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            if predicted_disease == 'Healthy':
-                st.balloons()
-            else:
-                st.error("⚠ " + translate_text("It is highly recommended to consult a medical professional.", selected_lang))
-            
-            col1, col2 = st.columns([1, 1])
-            
-            with col1:
-                full_text_for_speech = f"The predicted condition is {predicted_disease}. {disease_info.get(predicted_disease, 'No additional information.')}"
-                if st.button(translate_text("▶ Listen to the results", selected_lang), use_container_width=True):
-                    text_to_speech(translate_text(full_text_for_speech, selected_lang), lang=selected_lang)
-
-            
-
-            # --- PRECAUTIONS SECTION ---
-            st.markdown("---")
-            st.subheader("⚠ " + translate_text("Important Precautions", selected_lang))
-            
-            if predicted_disease in precautions:
-                prec_list = precautions[predicted_disease]
-                translated_prec_list = [translate_text(p, selected_lang) for p in prec_list]
-                st.markdown(
-                    f"""
-                    <ul style='font-size: 1.1em;'>
-                    {''.join([f'<li>{p}</li>' for p in translated_prec_list])}
-                    </ul>
-                    """, unsafe_allow_html=True
-                )
-            else:
-                st.info(translate_text("No specific precautions found for this condition. Please consult a doctor for personalized advice.", selected_lang))
-
-            st.markdown("---")
-            with st.expander(translate_text("View Full Prediction Probabilities", selected_lang)):
-                st.dataframe(st.session_state['probs_df'].style.format("{:.2%}"))
+        st.subheader(translate_text("📊 Prediction Probabilities", selected_lang))
+        st.bar_chart(st.session_state['probs_df'].T)
+        
+        st.divider()
+        st.subheader(translate_text("🩺 Medical Precautions", selected_lang))
+        for step in precautions.get(predicted_disease, []):
+            st.markdown(f"✅ {translate_text(step, selected_lang)}")
+        
+        st.divider()
+        with st.expander(translate_text("🔍 View Input Data Used", selected_lang)):
+            st.dataframe(st.session_state['input_df'])
