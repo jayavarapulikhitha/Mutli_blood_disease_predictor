@@ -44,65 +44,18 @@ load_css(".streamlit/style.css")
 
 st.markdown("""
 <style>
-    .reportview-container .main .block-container {
-        padding-top: 2rem;
-        padding-bottom: 2rem;
-    }
-    .main-container {
-        border-radius: 10px;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        padding: 30px;
-        background-color: white;
-    }
-    .st-emotion-cache-1jmve3k {
-        background-color: #f0f2f6;
-        border-radius: 10px;
-        padding: 15px;
-        border: 1px solid #e0e0e0;
-    }
-    .summary-card {
-        background-color: #e6f7ff;
-        border-left: 5px solid #0072B5;
-        padding: 20px;
-        border-radius: 10px;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 8px 0 rgba(0,0,0,0.1);
-    }
-    .summary-card h3 {
-        color: #0072B5;
-        font-size: 2.5em;
-        font-weight: bold;
-    }
-    .summary-card p {
-        color: #333333;
-        font-size: 1.1em;
-    }
-    .result-title {
-        color: #262626;
-    }
-    .stButton>button {
-        background-color: #0072B5;
-        color: white;
-        border-radius: 5px;
-        padding: 10px 20px;
-        font-weight: bold;
-    }
-    .stButton>button:hover {
-        background-color: #005f9c;
-    }
-    .welcome-container {
-        text-align: center;
-        padding-top: 100px;
-        padding-bottom: 100px;
-    }
-    .welcome-container h1 {
-        font-size: 3.5em;
-        color: #0072B5;
-    }
-    .welcome-container p {
-        font-size: 1.5em;
-        color: #555555;
-    }
+    .reportview-container .main .block-container { padding-top: 2rem; padding-bottom: 2rem; }
+    .main-container { border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); padding: 30px; background-color: white; }
+    .st-emotion-cache-1jmve3k { background-color: #f0f2f6; border-radius: 10px; padding: 15px; border: 1px solid #e0e0e0; }
+    .summary-card { background-color: #e6f7ff; border-left: 5px solid #0072B5; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 4px 8px 0 rgba(0,0,0,0.1); }
+    .summary-card h3 { color: #0072B5; font-size: 2.5em; font-weight: bold; }
+    .summary-card p { color: #333333; font-size: 1.1em; }
+    .result-title { color: #262626; }
+    .stButton>button { background-color: #0072B5; color: white; border-radius: 5px; padding: 10px 20px; font-weight: bold; }
+    .stButton>button:hover { background-color: #005f9c; }
+    .welcome-container { text-align: center; padding-top: 100px; padding-bottom: 100px; }
+    .welcome-container h1 { font-size: 3.5em; color: #0072B5; }
+    .welcome-container p { font-size: 1.5em; color: #555555; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -127,7 +80,14 @@ def translate_text(text, target_lang='en'):
 with st.sidebar:
     st.title("Settings")
     st.markdown("## 🌐 Language")
-    selected_lang = st.selectbox("Select Language", list(LANGUAGES.keys()), format_func=lambda x: LANGUAGES[x])
+    if 'selected_lang' not in st.session_state:
+        st.session_state.selected_lang = 'en'  # default language
+    st.session_state.selected_lang = st.selectbox(
+        "Select Language", 
+        list(LANGUAGES.keys()), 
+        index=list(LANGUAGES.keys()).index(st.session_state.selected_lang),
+        format_func=lambda x: LANGUAGES[x]
+    )
 
 # --- MODEL AND FILE LOADING ---
 @st.cache_resource
@@ -166,7 +126,7 @@ def extract_values_from_image(image_bytes):
         image = preprocess_image(image)
         raw_text = pytesseract.image_to_string(image)
         
-        with st.expander(translate_text("Show Raw OCR Text", selected_lang)):
+        with st.expander(translate_text("Show Raw OCR Text", st.session_state.selected_lang)):
             st.text(raw_text)
 
         extracted_values = {}
@@ -185,7 +145,7 @@ def extract_values_from_image(image_bytes):
                     break
         return extracted_values
     except Exception as e:
-        st.error(f"❌ OCR error: {e}. " + translate_text("Please try again or use manual input.", selected_lang))
+        st.error(f"❌ OCR error: {e}. " + translate_text("Please try again or use manual input.", st.session_state.selected_lang))
         return {}
 
 # --- FEATURE METADATA ---
@@ -282,68 +242,73 @@ if 'app_state' not in st.session_state:
 if st.session_state.app_state == 'welcome':
     st.markdown(f"""
     <div class="welcome-container">
-        <h1>{translate_text('Blood Disease Predictor', selected_lang)}</h1>
-        <p>{translate_text('Analyze your blood report to get insights on various health conditions.', selected_lang)}</p>
-        <p>{translate_text('Built with machine learning and medical data.', selected_lang)}</p>
+        <h1>{translate_text('Blood Disease Predictor', st.session_state.selected_lang)}</h1>
+        <p>{translate_text('Analyze your blood report to get insights on various health conditions.', st.session_state.selected_lang)}</p>
+        <p>{translate_text('Built with machine learning and medical data.', st.session_state.selected_lang)}</p>
     </div>
     """, unsafe_allow_html=True)
-    if st.button(translate_text("🚀 Start Prediction", selected_lang), use_container_width=True):
+    if st.button(translate_text("🚀 Start Prediction", st.session_state.selected_lang), use_container_width=True):
         st.session_state.app_state = 'main_app'
         st.rerun()
 
 # --- MAIN APP ---
 if st.session_state.app_state == 'main_app':
-    st.title(translate_text("🩸 Blood Report Analysis", selected_lang))
+    st.title(translate_text("🩸 Blood Report Analysis", st.session_state.selected_lang))
     st.markdown(f"""
-        <p style='font-size: 1.1em;'>{translate_text('Upload your blood report image or enter values manually to predict possible blood disorders.', selected_lang)}</p>
+        <p style='font-size: 1.1em;'>{translate_text('Upload your blood report image or enter values manually to predict possible blood disorders.', st.session_state.selected_lang)}</p>
     """, unsafe_allow_html=True)
     st.divider()
 
     # --- USER INPUT ---
     with st.form("prediction_form"):
         tab1, tab2, tab3 = st.tabs([
-            translate_text("📸 Use Camera", selected_lang),
-            translate_text("📂 Upload Photo", selected_lang),
-            translate_text("✍ Manual Input", selected_lang)
+            translate_text("📸 Use Camera", st.session_state.selected_lang),
+            translate_text("📂 Upload Photo", st.session_state.selected_lang),
+            translate_text("✍ Manual Input", st.session_state.selected_lang)
         ])
 
         input_data = {}
         image_bytes = None
 
         with tab1:
-            st.info(translate_text("Take a photo of your blood report using your device's camera.", selected_lang))
-            camera_capture = st.camera_input(translate_text("Capture Image", selected_lang))
+            st.info(translate_text("Take a photo of your blood report using your device's camera.", st.session_state.selected_lang))
+            camera_capture = st.camera_input(translate_text("Capture Image", st.session_state.selected_lang))
             if camera_capture:
-                st.success(translate_text("Photo captured successfully.", selected_lang))
+                st.success(translate_text("Photo captured successfully.", st.session_state.selected_lang))
                 image_bytes = camera_capture.getvalue()
         
         with tab2:
-            st.info(translate_text("Upload a photo of your blood report from your device.", selected_lang))
-            uploaded_file = st.file_uploader(translate_text("Upload image (JPG/PNG)", selected_lang), type=["jpg", "jpeg", "png"])
+            st.info(translate_text("Upload a photo of your blood report from your device.", st.session_state.selected_lang))
+            uploaded_file = st.file_uploader(translate_text("Upload image (JPG/PNG)", st.session_state.selected_lang), type=["jpg", "jpeg", "png"])
             if uploaded_file:
-                st.success(translate_text("Image uploaded.", selected_lang))
+                st.success(translate_text("Image uploaded.", st.session_state.selected_lang))
                 image_bytes = uploaded_file.read()
 
         with tab3:
-            st.markdown(f"{translate_text('Enter your blood test results', selected_lang)}")
+            st.markdown(f"{translate_text('Enter your blood test results', st.session_state.selected_lang)}")
             cols = st.columns(2)
             for i, feature in enumerate(original_features):
                 with cols[i % 2]:
                     label = friendly_names.get(feature, feature)
                     tip = help_texts.get(feature, "")
-                    input_data[feature] = st.number_input(translate_text(label, selected_lang), min_value=0.0, max_value=1000.0, value=0.0, step=0.1, help=translate_text(tip, selected_lang), key=f"manual_{feature}")
+                    input_data[feature] = st.number_input(
+                        translate_text(label, st.session_state.selected_lang),
+                        min_value=0.0, max_value=1000.0, value=0.0, step=0.1,
+                        help=translate_text(tip, st.session_state.selected_lang),
+                        key=f"manual_{feature}"
+                    )
 
-        submitted = st.form_submit_button(translate_text("🔍 Predict Disease", selected_lang), type="primary", use_container_width=True)
+        submitted = st.form_submit_button(translate_text("🔍 Predict Disease", st.session_state.selected_lang), type="primary", use_container_width=True)
 
     # --- PREDICTION LOGIC ---
     if submitted:
         st.divider()
-        with st.spinner(translate_text("Analyzing data and predicting...", selected_lang)):
+        with st.spinner(translate_text("Analyzing data and predicting...", st.session_state.selected_lang)):
             final_input_values = {}
             if image_bytes:
                 ocr_values = extract_values_from_image(image_bytes)
                 if not ocr_values:
-                    st.warning("⚠ " + translate_text("No valid values found in OCR output. Falling back to manual input.", selected_lang))
+                    st.warning("⚠ " + translate_text("No valid values found in OCR output. Falling back to manual input.", st.session_state.selected_lang))
                     final_input_values = input_data
                 else:
                     for feat in original_features:
@@ -352,7 +317,7 @@ if st.session_state.app_state == 'main_app':
                 final_input_values = input_data
 
             if not any(final_input_values.values()):
-                st.error("❌ " + translate_text("No valid values detected. Please enter values or upload a readable image.", selected_lang))
+                st.error("❌ " + translate_text("No valid values detected. Please enter values or upload a readable image.", st.session_state.selected_lang))
                 st.stop()
 
             input_df = pd.DataFrame([final_input_values])
@@ -369,15 +334,15 @@ if st.session_state.app_state == 'main_app':
                 predicted_label = le.inverse_transform(prediction)[0]
 
                 st.session_state['prediction'] = predicted_label
-                st.session_state['probs_df'] = pd.DataFrame(probs, columns=le.classes_, index=[translate_text("Probability", selected_lang)])
+                st.session_state['probs_df'] = pd.DataFrame(probs, columns=le.classes_, index=[translate_text("Probability", st.session_state.selected_lang)])
                 st.session_state['input_df'] = input_df
             except Exception as e:
-                st.error("🚫 " + translate_text(f"Prediction failed: {e}", selected_lang))
+                st.error("🚫 " + translate_text(f"Prediction failed: {e}", st.session_state.selected_lang))
                 st.stop()
 
     # --- DISPLAY RESULTS ---
     if 'prediction' in st.session_state:
-        st.subheader(translate_text("✅ Prediction Results", selected_lang))
+        st.subheader(translate_text("✅ Prediction Results", st.session_state.selected_lang))
         st.divider()
         
         predicted_disease = st.session_state['prediction']
@@ -385,29 +350,29 @@ if st.session_state.app_state == 'main_app':
         
         st.markdown(f"""
         <div class="summary-card">
-            <h3>{translate_text('Predicted Condition:', selected_lang)} {emoji} {translate_text(predicted_disease, selected_lang)}</h3>
-            <p>{translate_text(disease_info.get(predicted_disease, 'No additional info available.'), selected_lang)}</p>
+            <h3>{translate_text('Predicted Condition:', st.session_state.selected_lang)} {emoji} {translate_text(predicted_disease, st.session_state.selected_lang)}</h3>
+            <p>{translate_text(disease_info.get(predicted_disease, 'No additional info available.'), st.session_state.selected_lang)}</p>
         </div>
         """, unsafe_allow_html=True)
         
         if predicted_disease == 'Healthy':
             st.balloons()
         else:
-            st.error("⚠ " + translate_text("It is highly recommended to consult a medical professional.", selected_lang))
+            st.error("⚠ " + translate_text("It is highly recommended to consult a medical professional.", st.session_state.selected_lang))
         
-        st.markdown(f"**{translate_text('🔊 Listen:', selected_lang)}**")
+        st.markdown(f"**{translate_text('🔊 Listen:', st.session_state.selected_lang)}**")
         full_text_for_speech = f"The predicted condition is {predicted_disease}. {disease_info.get(predicted_disease, 'No additional information.')}"
-        text_to_speech(full_text_for_speech, selected_lang)
+        text_to_speech(full_text_for_speech, st.session_state.selected_lang)
         
         st.divider()
-        st.subheader(translate_text("📊 Prediction Probabilities", selected_lang))
+        st.subheader(translate_text("📊 Prediction Probabilities", st.session_state.selected_lang))
         st.bar_chart(st.session_state['probs_df'].T)
         
         st.divider()
-        st.subheader(translate_text("🩺 Medical Precautions", selected_lang))
+        st.subheader(translate_text("🩺 Medical Precautions", st.session_state.selected_lang))
         for step in precautions.get(predicted_disease, []):
-            st.markdown(f"✅ {translate_text(step, selected_lang)}")
+            st.markdown(f"✅ {translate_text(step, st.session_state.selected_lang)}")
         
         st.divider()
-        with st.expander(translate_text("🔍 View Input Data Used", selected_lang)):
+        with st.expander(translate_text("🔍 View Input Data Used", st.session_state.selected_lang)):
             st.dataframe(st.session_state['input_df'])
