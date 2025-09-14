@@ -14,10 +14,15 @@ from gtts.tts import gTTS
 # --- PAGE CONFIGURATION (UI ENHANCEMENT) ---
 st.set_page_config(
     page_title="Blood Disease Detector",  
-    page_icon="icon.jpg",  
+    page_icon="images/icon.jpg",  # <-- Recommended to use .png for transparency
     layout="wide",
     initial_sidebar_state="collapsed"
 )
+
+# --- PWA MANIFEST LINK ---
+# This is the crucial line for mobile app icon visibility.
+st.markdown('<link rel="manifest" href="/manifest.json">', unsafe_allow_html=True)
+
 
 # --- CUSTOM CSS (UI ENHANCEMENT) ---
 def load_css(file_name):
